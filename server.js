@@ -6,9 +6,9 @@ const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
+const io = socketIo(server, { cors: { origin: "*" } });
 
-// SERVE ALL FILES FROM ROOT (Render + local)
+// THIS IS THE ONLY FIX YOU NEED — SERVE FROM ROOT
 app.use(express.static(__dirname));
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
@@ -24,7 +24,6 @@ const WORLD_SIZE = { w: 2000, h: 1500 };
 io.on('connection', (socket) => {
   console.log('Player connected:', socket.id);
 
-  // Create player
   const team = Object.values(players).filter(p => p.team === 'grok').length <
                Object.values(players).filter(p => p.team === 'popcorn').length ? 'grok' : 'popcorn';
 
@@ -74,9 +73,8 @@ io.on('connection', (socket) => {
   });
 });
 
-// Game loop - broadcast state & check collisions
+// Game loop
 setInterval(() => {
-  // Sword movement & collision
   const now = Date.now();
   const toDelete = [];
 
@@ -86,16 +84,14 @@ setInterval(() => {
     s.y += s.vy;
     s.life--;
 
-    // Out of bounds or expired
     if (s.life <= 0 || s.x < 0 || s.x > WORLD_SIZE.w || s.y < 0 || s.y > WORLD_SIZE.h) {
       toDelete.push(sid);
       continue;
     }
 
-    // Check collision with players
     for (const pid in players) {
       const p = players[pid];
-      if (p.team === s.team) continue; // same team
+      if (p.team === s.team) continue;
       const dx = p.x - s.x;
       const dy = p.y - s.y;
       if (Math.sqrt(dx*dx + dy*dy) < 30) {
@@ -121,8 +117,7 @@ setInterval(() => {
 
 }, 1000 / 60);
 
-server.listen(PORT, () => {
-  console.log(`Grok vs Popcorns running on http://localhost:${PORT}`);
-  console.log(`Team balancing: Groks  Popcorns`);
-
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`GROK vs POPCORNS LIVE AT PORT ${PORT}`);
+  console.log(`OPEN: https://groks-vs-popcorns.onrender.com`);
 });
