@@ -1,0 +1,42 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #111;
+  overflow: hidden;
+  font-family: 'Courier New', monospace;
+  color: white;
+  user-select: none;
+}
+#game {
+  position: fixed;
+  top: 0; left: 0;
+  background: #0a1a0a;
+  image-rendering: pixelated;
+}
+#ui {
+  position: fixed;
+  top: 20px; left: 20px;
+  z-index: 100;
+  pointer-events: none;
+}
+#teamInfo {
+  font-size: 28px;
+  font-weight: bold;
+  text-shadow: 0 0 10px;
+  margin-bottom: 10px;
+}
+#score, #health {
+  font-size: 20px;
+  margin: 8px 0;
+  text-shadow: 2px 2px 0 #000;
+}
+#instructions {
+  margin-top: 30px;
+  font-size: 16px;
+  opacity: 0.8;
+  background: rgba(0,0,0,0.5);
+  padding: 10px;
+  border-radius: 8px;
+  display: inline-block;
+}
+.grok { color: #00ffcc; }
+.popcorn { color: #ffeb3b; }
