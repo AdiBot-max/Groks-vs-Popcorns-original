@@ -119,4 +119,5 @@ setInterval(() => {
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`GROK vs POPCORNS LIVE AT PORT ${PORT}`);
-
+  console.log(`OPEN: https://groks-vs-popcorns.onrender.com`);
+});
