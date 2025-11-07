@@ -4,24 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Grok vs Popcorns</title>
-  <link rel="stylesheet" href="/style.css" />
-  <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { background:#000; overflow:hidden; font-family:Arial; color:white; }
-    canvas { position:fixed; top:0; left:0; background:#0a1a0a; image-rendering:pixelated; }
-    #ui { position:fixed; top:20px; left:20px; z-index:100; pointer-events:none; }
-    #team { font-size:32px; font-weight:bold; text-shadow:0 0 15px; margin-bottom:10px; }
-    #score, #health { font-size:22px; margin:8px 0; text-shadow:2px 2px 0 #000; }
-    #instructions { margin-top:40px; background:rgba(0,0,0,0.6); padding:12px; border-radius:10px; font-size:16px; }
-    .grok { color:#00ffff; }
-    .popcorn { color:#ffeb3b; }
-  </style>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div id="ui">
-    <div id="team">Connecting...</div>
+    <div id="teamInfo">Connecting...</div>
     <div id="score">Kills: 0 | Deaths: 0</div>
-    <div id="health">❤️ 100</div>
+    <div id="health">100</div>
     <div id="instructions">
       WASD = Move • MOUSE = Aim • CLICK or G = Shoot Sword<br>
       <strong>TEAM GROK vs TEAM POPCORN</strong>
@@ -30,137 +19,6 @@
   <canvas id="game"></canvas>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const canvas = document.getElementById('game');
-    const ctx = canvas.getContext('2d');
-    const socket = io();
-
-    let me = { id: null, team: null };
-    let players = {};
-    let swords = {};
-    let keys = {};
-    let mouse = { x: 0, y: 0 };
-
-    const WORLD = { w: 2000, h: 1500 };
-    let camera = { x: 0, y: 0 };
-
-    function resize() {
-      canvas.width = innerWidth;
-      canvas.height = innerHeight;
-    }
-    resize();
-    window.addEventListener('resize', resize);
-    canvas.addEventListener('click', () => document.fullscreenElement || document.documentElement.requestFullscreen());
-
-    window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
-    window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
-    canvas.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
-    canvas.addEventListener('mousedown', () => shoot());
-    window.addEventListener('keypress', e => (e.key === 'g' || e.key === 'G') && shoot());
-
-    function shoot() {
-      if (!me.id) return;
-      const angle = Math.atan2(mouse.y - canvas.height/2, mouse.x - canvas.width/2);
-      socket.emit('shootSword', {
-        x: players[me.id].x,
-        y: players[me.id].y,
-        vx: Math.cos(angle) * 12,
-        vy: Math.sin(angle) * 12,
-        life: 60,
-        angle
-      });
-    }
-
-    socket.on('youAre', data => {
-      me = data;
-      document.getElementById('team').innerHTML = data.team === 'grok' 
-        ? 'YOU ARE GROK' 
-        : 'YOU ARE POPCORN';
-      document.getElementById('team').className = data.team;
-    });
-
-    socket.on('currentPlayers', p => players = p);
-    socket.on('newPlayer', p => players[p.id] = p);
-    socket.on('playerMoved', d => { if(players[d.id]) { players[d.id].x = d.x; players[d.id].y = d.y; players[d.id].angle = d.angle; }});
-    socket.on('playerLeft', id => delete players[id]);
-    socket.on('swordsUpdate', s => swords = s);
-    socket.on('swordShot', s => swords[s.id] = s);
-    socket.on('playerHit', d => { if(players[d.id]) players[d.id].health = d.health; });
-    socket.on('playerDied', d => {
-      if (d.id === me.id) {
-        document.getElementById('health').innerHTML = 'RESPAWNING...';
-        setTimeout(() => document.getElementById('health').innerHTML = '❤️ 100', 1500);
-      }
-    });
-
-    function update() {
-      if (!me.id || !players[me.id]) return;
-      const p = players[me.id];
-      const speed = 4;
-      let vx = 0, vy = 0;
-      if (keys['w']) vy -= speed;
-      if (keys['s']) vy += speed;
-      if (keys['a']) vx -= speed;
-      if (keys['d']) vx += speed;
-      p.x = Math.max(50, Math.min(WORLD.w-50, p.x + vx));
-      p.y = Math.max(50, Math.min(WORLD.h-50, p.y + vy));
-      p.angle = Math.atan2(mouse.y - canvas.height/2, mouse.x - canvas.width/2);
-      socket.emit('playerMove', { x: p.x, y: p.y, angle: p.angle });
-
-      camera.x = p.x - canvas.width/2;
-      camera.y = p.y - canvas.height/2;
-
-      document.getElementById('score').textContent = `Kills: ${p.kills||0} | Deaths: ${p.deaths||0}`;
-      document.getElementById('health').textContent = p.health > 0 ? `❤️ ${p774health}` : 'DEAD';
-    }
-
-    function render() {
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      ctx.save();
-      ctx.translate(-camera.x, -camera.y);
-
-      // grid
-      ctx.strokeStyle = '#003300';
-      for(let x=0;x<WORLD.w;x+=100){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,WORLD.h); ctx.stroke(); }
-      for(let y=0;y<WORLD.h;y+=100){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(WORLD.w,y); ctx.stroke(); }
-
-      // swords
-      for(const id in swords){
-        const s = swords[id];
-        ctx.save();
-        ctx.translate(s.x, s.y);
-        ctx.rotate(s.angle);
-        ctx.font = '40px serif';
-        ctx.fillText('Sword', -20,15);
-        ctx.restore();
-      }
-
-      // players
-      for(const id in players){
-        const p = players[id];
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.angle);
-        ctx.font = '60px serif';
-        ctx.fillText(p.team==='grok'?'Robot':'Popcorn', -28,20);
-        // health bar
-        ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(-30,40,60,8);
-        ctx.fillStyle = p.health>50?'#0f0':p.health>25?'#ff0':'#f00';
-        ctx.fillRect(-30,40,(p.health/100)*60,8);
-        ctx.fillStyle='#fff'; ctx.font='16px Arial'; ctx.textAlign='center';
-        ctx.fillText(id===me.id?'YOU':id.slice(0,6), 0, 65);
-        ctx.restore();
-      }
-
-      ctx.restore();
-    }
-
-    function loop(){
-      update();
-      render();
-      requestAnimationFrame(loop);
-    }
-    requestAnimationFrame(loop);
-  </script>
+  <script src="main.js"></script>
 </body>
 </html>
